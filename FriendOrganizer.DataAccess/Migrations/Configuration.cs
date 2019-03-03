@@ -17,10 +17,10 @@ namespace FriendOrganizer.DataAccess.Migrations
         {
             context.Friends.AddOrUpdate(
                 f => f.FirstName,
-                new Friend { FirstName = "Thomas", LastName = "Huber" },
-                new Friend { FirstName = "Urs", LastName = "Meier" },
-                new Friend { FirstName = "Erkan", LastName = "Egin" },
-                new Friend { FirstName = "Sara", LastName = "Huber" }
+                new Friend { FirstName = "Tom", LastName = "Unknown" },
+                new Friend { FirstName = "Diederik", LastName = "Unknown" },
+                new Friend { FirstName = "Evelyn", LastName = "Forgotten" },
+                new Friend { FirstName = "Laurens", LastName = "Forgotten" }
                 );
         }
     }
