@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FriendOrganizer.UI.Event
 {
-    public class AfterFriendSavedEvent: PubSubEvent<AfterFriendSavedEventArgs>
+    public class AfterDetailSavedEvent: PubSubEvent<AfterDetailSavedEventArgs>
     {
     }
 }
