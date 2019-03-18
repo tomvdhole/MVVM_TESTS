@@ -17,28 +17,22 @@ using System.Windows.Input;
 
 namespace FriendOrganizer.UI.ViewModel
 {
-    public class FriendDetailViewModel : ViewModelBase, IFriendDetailViewModel
+    public class FriendDetailViewModel : DetailViewModelBase, IFriendDetailViewModel
     {
         private IFriendRepository _friendRepository;
-        private IEventAggregator _eventAggregator;
-        private IMessageDialogService _messageDialogService;
         private IProgrammingLanguageLookupDataService _programmingLanguageLookupDataService;
         private FriendWrapper _friend;
-        private bool _hasChanges;
         private FriendPhoneNumberWrapper _selectedPhoneNumber;
 
         public FriendDetailViewModel(IFriendRepository friendRepository,
                                      IEventAggregator eventAggregator,
                                      IMessageDialogService messageDialogService,
                                      IProgrammingLanguageLookupDataService programmingLanguageLookupDataService)
+            :base(eventAggregator, messageDialogService)
         {
             _friendRepository = friendRepository;
-            _eventAggregator = eventAggregator;
-            _messageDialogService = messageDialogService;
             _programmingLanguageLookupDataService = programmingLanguageLookupDataService;
 
-            SaveCommand = new DelegateCommand(OnSaveExecute, OnSaveCanExecute);
-            DeleteCommand = new DelegateCommand(OnDeleteExecute);
             AddPhoneNumberCommand = new DelegateCommand(OnAddPhoneNumberExecute);
             RemovePhoneNumberCommand = new DelegateCommand(OnRemovePhoneNumberExcecute, OnRemovePhoneNumberCanExecute);
 
@@ -72,25 +66,28 @@ namespace FriendOrganizer.UI.ViewModel
             return SelectedPhoneNumber != null;
         }
 
-        private async void OnDeleteExecute()
+        protected override async void OnDeleteExecute()
         {
-            var result = _messageDialogService.ShowOkCancelDialog($"Do you really want to delete the friend {Friend.FirstName} {Friend.LastName} ?", "Question");
+            if(await _friendRepository.HasMeetingsAsync(Friend.Id))
+            {
+                MessageDialogService.ShowInfoDialog($"{Friend.FirstName} {Friend.LastName} can't be deleted, as this friend is part of at least one meeting!");
+                return;
+            }
+
+            var result = MessageDialogService.ShowOkCancelDialog($"Do you really want to delete the friend {Friend.FirstName} {Friend.LastName} ?", "Question");
             if (result == MessageDialogResult.Ok)
             {
                 _friendRepository.Remove(Friend.Model);
                 await _friendRepository.SaveAsync();
-                _eventAggregator.GetEvent<AfterDetailDeletedEvent>().Publish(
-                    new AfterDetailDeletedEventArgs
-                    {
-                        Id = Friend.Id,
-                        ViewModelName = nameof(FriendDetailViewModel)
-                    });
-            }
+                RaiseDetailDeletedEvent(Friend.Id);
+             }
         }
 
-        public async Task LoadAsync(int? friendId)
+        public override async Task LoadAsync(int friendId)
         {
-            var friend = friendId.HasValue ? await _friendRepository.GetByIdAsync(friendId.Value) : CreateNewFriend();
+            var friend = friendId > 0 ? await _friendRepository.GetByIdAsync(friendId) : CreateNewFriend();
+
+            Id = friendId;
 
             InitializeFriend(friend);
 
@@ -152,6 +149,11 @@ namespace FriendOrganizer.UI.ViewModel
                 {
                     ((DelegateCommand)SaveCommand).RaiseCanExecuteChanged();
                 }
+                if(e.PropertyName == nameof(Friend.FirstName) ||
+                e.PropertyName == nameof(Friend.LastName))
+                {
+                    SetTitle();
+                }
             };
             ((DelegateCommand)SaveCommand).RaiseCanExecuteChanged();
             if (Friend.Id == 0)
@@ -159,6 +161,12 @@ namespace FriendOrganizer.UI.ViewModel
                 //little trick to trigger validation
                 Friend.FirstName = "";
             }
+            SetTitle();
+        }
+
+        private void SetTitle()
+        {
+            Title = $"{Friend.FirstName} {Friend.LastName}";
         }
 
         public FriendWrapper Friend
@@ -182,46 +190,23 @@ namespace FriendOrganizer.UI.ViewModel
             }
         }
 
-        public ICommand SaveCommand { get; }
-        public ICommand DeleteCommand { get; }
         public ICommand AddPhoneNumberCommand { get; }
         public ICommand RemovePhoneNumberCommand { get; }
 
         public ObservableCollection<LookupItem> ProgrammingLanguages { get; }
         public ObservableCollection<FriendPhoneNumberWrapper> PhoneNumbers { get; }
 
-        public bool HasChanges
-        {
-            get { return _hasChanges; }
-            set
-            {
-                if(_hasChanges != value)
-                {
-                    _hasChanges = value;
-                    OnPropertyChanged();
-                    ((DelegateCommand)SaveCommand).RaiseCanExecuteChanged();
-                }
-            }
-        }
-
-
-
-        private bool OnSaveCanExecute()
+        protected override bool OnSaveCanExecute()
         {
             return Friend != null && !Friend.HasErrors && HasChanges && PhoneNumbers.All(pn => !pn.HasErrors);
         }
 
-        private  async void OnSaveExecute()
+        protected override async void OnSaveExecute()
         {
-           await _friendRepository.SaveAsync();
+            await _friendRepository.SaveAsync();
             HasChanges = _friendRepository.HasChanges();
-            _eventAggregator.GetEvent<AfterDetailSavedEvent>().Publish(
-                new AfterDetailSavedEventArgs
-                {
-                    Id = Friend.Id,
-                    DisplayMember = $"{Friend.FirstName} {Friend.LastName}",
-                    ViewModelName = nameof(FriendDetailViewModel)
-                });
+            Id = Friend.Id;
+            RaiseDetailSavedEvent(Friend.Id, $"{Friend.FirstName} {Friend.LastName}");
         }
 
         private Friend CreateNewFriend()
