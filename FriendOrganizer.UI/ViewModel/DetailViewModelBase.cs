@@ -28,11 +28,11 @@ namespace FriendOrganizer.UI.ViewModel
             CloseDetailViewCommand = new DelegateCommand(OnCloseDetailViewExecute);
         }
 
-        protected virtual void OnCloseDetailViewExecute()
+        protected async virtual void OnCloseDetailViewExecute()
         {
             if (HasChanges)
             {
-                var result = MessageDialogService.ShowOkCancelDialog("You've made changes. close this item?", "Question");
+                var result = await MessageDialogService.ShowOkCancelDialogAsync("You've made changes. close this item?", "Question");
                 if(result == MessageDialogResult.Cancel)
                 {
                     return;
@@ -130,12 +130,12 @@ SaveWithOptimisticConcurrencyAsync(Func<Task> saveFunc, Action afterSaveAction)
                 var databaseValues = ex.Entries.Single().GetDatabaseValues();
                 if (databaseValues == null)
                 {
-                    MessageDialogService.ShowInfoDialog("The entity has been deleted by another user");
+                    await MessageDialogService.ShowInfoDialogAsync("The entity has been deleted by another user");
                     RaiseDetailDeletedEvent(Id);
                     return;
                 }
 
-                var result = MessageDialogService.ShowOkCancelDialog("The entity has been changed in "
+                var result = await MessageDialogService.ShowOkCancelDialogAsync("The entity has been changed in "
                     + "the meantime by someone else. Click OK to save your changes anyway, click Cancel "
                     + "to reload the entity from the database.", "Question");
 

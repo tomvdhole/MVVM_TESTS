@@ -28,9 +28,8 @@
                     <Style TargetType="toolkit:DateTimePicker">
                         <Setter Property="Foreground" Value="White"/>
                     </Style>
-                   
-
-                    <Style TargetType="TextBox">
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Setter Property="FontSize" Value="20" />
                         <Setter Property="Validation.ErrorTemplate">
                             <Setter.Value>
                                 <ControlTemplate>
